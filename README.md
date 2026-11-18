@@ -21,7 +21,11 @@ Team: **Siddhi Sandip Kakani**, **Bernice Mercy Sharon Malaiarasu**.
   preservation, replay exclusion, report invariants).
 - Live Claude CLI adapter returning strict‑JSON repair plans.
 - 30‑scenario development pilot + hand‑built checker negative controls.
-- 22/22 unit tests pass.
+- **24‑scenario held‑out evaluation** on fault families disjoint from the pilot
+  (unseen columns, formats, tables, and compositions) — tests generalization.
+- **1‑vs‑N candidate experiment**: the agent draws N proposals and the verifier
+  selects among them (it never sees gold).
+- 30/30 unit tests pass.
 
 See `PipelineMedic_Progress_Report.pdf` for measured results.
 
@@ -65,16 +69,22 @@ Set `PIPELINEMEDIC_PYTHON` to pick the interpreter.
 # 2. 30-scenario development pilot (unrepaired / fixed-rules / fixed-rules+verifier)
 ./run_local.sh evaluate
 
-# 3. Checker negative controls — full verifier vs. weakened schema-only verifier
+# 3. Held-out evaluation on 24 UNSEEN fault families (generalization test)
+./run_local.sh heldout
+
+# 4. Checker negative controls — full verifier vs. weakened schema-only verifier
 ./run_local.sh checker-tests
 
-# 4. Live Claude pilot (needs the claude CLI; makes real, budgeted API calls)
+# 5. Live Claude pilot (needs the claude CLI; makes real, budgeted API calls)
 ./run_local.sh live-pilot --max-cases 4
 
-# 5. Run the test suite
+# 6. 1-vs-N candidate experiment (needs the claude CLI; N real calls per family)
+./run_local.sh candidate-experiment --families date rename --n 3
+
+# 7. Run the test suite (30 tests)
 PYTHONPATH="$PWD/.deps:$PWD" "$PIPELINEMEDIC_PYTHON" -m unittest discover -s tests
 
-# 6. Regenerate the progress-report PDF from saved artifacts
+# 8. Regenerate the progress-report PDF from saved artifacts
 "$PIPELINEMEDIC_PYTHON" make_report.py     # needs reportlab
 ```
 
@@ -100,10 +110,12 @@ ingestion ledger). Fault choices: `rename`, `date`, `replay`, `combined`,
 | `pipelinemedic/data.py` | Reproducible sampling, source contracts, CSV I/O, SHA‑256 fingerprints. |
 | `pipelinemedic/core.py` | Fixed repair rules, plan validation, sandboxed execution, DuckDB reports, and the independent verifier (`full` and `schema_only`). |
 | `pipelinemedic/agent.py` | Claude CLI adapter: sends only headers/contracts/date samples, enforces a JSON schema, disables tools/hooks/MCP, records cost & usage. |
-| `pipelinemedic/scenarios.py` | Controlled fault injection (development pilot, **not** a held‑out benchmark). |
-| `pipelinemedic/evaluate.py` | Pilot runner, gold scoring (isolated from runtime), checker challenges, live pilot. |
-| `pipelinemedic/__main__.py` | CLI: `prepare`, `baseline`, `evaluate`, `checker-tests`, `live-pilot`, `demo`. |
-| `tests/test_pipeline.py` | 22 unit tests. |
+| `pipelinemedic/scenarios.py` | Controlled fault injection for the development pilot (**not** held‑out). |
+| `pipelinemedic/heldout.py` | Held‑out fault families, disjoint from the pilot, for a generalization test. |
+| `pipelinemedic/evaluate.py` | Pilot + held‑out runners, gold scoring (isolated from runtime), checker challenges, live pilot, and the 1‑vs‑N candidate experiment. |
+| `pipelinemedic/__main__.py` | CLI: `prepare`, `baseline`, `evaluate`, `heldout`, `checker-tests`, `live-pilot`, `candidate-experiment`, `demo`. |
+| `tests/test_pipeline.py` | 22 core unit tests. |
+| `tests/test_extensions.py` | 8 tests for held‑out faults and the candidate experiment. |
 | `make_report.py` | Renders the 4‑page progress PDF from `artifacts/*.json`. |
 
 ### Outputs (`artifacts/`)
@@ -115,12 +127,17 @@ by the runtime agent or verifier).
 
 ## Limitations
 
-- The 30 scenarios are a **development pilot**, not a genuinely held‑out
-  benchmark; the held‑out evaluation is still to be built.
 - The live Claude comparison is **4 smoke cases** and reuses one proposal for
   the paired run — preliminary, not a performance claim. On this set the
   fixed‑rule baseline currently outperforms the agent (it failed the `date`
   case by omitting ISO canonicalization; the verifier correctly rejected it).
+- The **1‑vs‑N candidate experiment** is preliminary. On the `date` fault all N
+  samples failed identically, so best‑of‑N did **not** help — the failure is
+  systematic (missing ISO canonicalization), not sampling noise; the fix is a
+  clearer agent system prompt, not more samples. The verifier accepted zero
+  wrong candidates.
+- The held‑out set reuses fresh gold computed from the clean base; a future
+  round should draw gold from an entirely separate data split.
 - No monitoring **dashboard** yet.
 - The bundled `.deps/` DuckDB is macOS / CPython‑3.12 specific; other platforms
   should `pip install duckdb==1.5.6`.

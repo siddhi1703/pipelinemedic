@@ -76,3 +76,21 @@ def propose(bundle, audit_path=None, timeout=90, budget_usd=0.50):
         Path(audit_path).parent.mkdir(parents=True, exist_ok=True)
         Path(audit_path).write_text(json.dumps(audit, indent=2))
     return plan, audit
+
+
+def propose_candidates(bundle, n=3, audit_dir=None, **kwargs):
+    """Draw n independent Claude proposals for the SAME evidence.
+
+    Natural sampling variation gives candidate diversity; the verifier (not this
+    adapter, and never the gold answers) later selects among them. A failed draw
+    is captured as ``(None, {"error": ...})`` rather than aborting the set, so a
+    single bad call cannot be mistaken for a success.
+    """
+    candidates = []
+    for i in range(n):
+        audit_path = (Path(audit_dir) / f"candidate_{i + 1}.json") if audit_dir else None
+        try:
+            candidates.append(propose(bundle, audit_path, **kwargs))
+        except (PipelineError, OSError) as e:
+            candidates.append((None, {"error": str(e), "candidate": i + 1}))
+    return candidates

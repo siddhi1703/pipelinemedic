@@ -4,7 +4,8 @@ import json
 from pathlib import Path
 from .data import prepare, load_sample
 from .core import attempt, fixed_plan
-from .evaluate import NOOP, run_pilot, checker_challenges, run_live_pilot, save_json
+from .evaluate import (NOOP, run_pilot, checker_challenges, run_live_pilot,
+                       run_heldout, run_candidate_experiment, save_json)
 from .scenarios import inject
 
 def main():
@@ -13,8 +14,13 @@ def main():
     prep = sub.add_parser("prepare"); prep.add_argument("--source", required=True); prep.add_argument("--size", type=int, default=5000)
     sub.add_parser("baseline")
     sub.add_parser("evaluate")
+    sub.add_parser("heldout")
     sub.add_parser("checker-tests")
     live = sub.add_parser("live-pilot"); live.add_argument("--max-cases", type=int, default=4)
+    cand = sub.add_parser("candidate-experiment")
+    cand.add_argument("--families", nargs="+", default=["date", "rename"],
+                      choices=["rename", "date", "replay", "combined", "ambiguous"])
+    cand.add_argument("--n", type=int, default=3)
     demo = sub.add_parser("demo"); demo.add_argument("--fault", choices=["rename","date","replay","combined","ambiguous"], default="replay"); demo.add_argument("--agent", action="store_true")
     args = p.parse_args()
     data, out = Path("data/olist_5000"), Path("artifacts")
@@ -27,10 +33,14 @@ def main():
         print(json.dumps(json.loads((out / "baseline.json").read_text()), indent=2))
     elif args.cmd == "evaluate":
         result = run_pilot(base, out); print(json.dumps(result["summary"], indent=2))
+    elif args.cmd == "heldout":
+        result = run_heldout(base, out); print(json.dumps(result["summary"], indent=2))
     elif args.cmd == "checker-tests":
         print(json.dumps(checker_challenges(base, out), indent=2))
     elif args.cmd == "live-pilot":
         print(json.dumps(run_live_pilot(base, out, args.max_cases), indent=2))
+    elif args.cmd == "candidate-experiment":
+        print(json.dumps(run_candidate_experiment(base, out, tuple(args.families), args.n), indent=2))
     else:
         b = inject(base, args.fault)
         if args.agent:
