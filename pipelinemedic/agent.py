@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 from time import perf_counter
 from .core import PipelineError, validate_plan
-from .data import DATE_COLUMNS, fingerprint
+from .data import DATE_COLUMNS, ISO, fingerprint
 
 PLAN_SCHEMA = {
     "type": "object", "additionalProperties": False,
@@ -26,7 +26,11 @@ Use rename_column(table,source,target), parse_date(table,column,format), or
 skip_replayed_batches (no other fields). parse_date must be applied separately to
 each changed date column. Skip a replay only when table, batch ID and content hash
 match; a reused ID with different content needs human review. A correct format
-uses Python strptime syntax. Return the schema, with one short reason. No hidden
+uses Python strptime syntax. The pipeline stores every date in the canonical ISO
+format given as target_date_format. A contract date_format describes the SOURCE
+format, not the target, so dates matching it are not yet repaired: for every date
+column whose documented format differs from target_date_format, emit parse_date
+with that documented format; it converts the column to ISO. Return the schema, with one short reason. No hidden
 answers, filenames, shell access, or external tools are available."""
 
 def observe(bundle):
@@ -37,7 +41,7 @@ def observe(bundle):
         cols = list(b["rows"][0])
         dates = {c: list(dict.fromkeys(r[c] for r in b["rows"] if r.get(c)))[:3] for c in DATE_COLUMNS[t] if c in cols}
         batches.append({"table": t, "batch_id": b["batch_id"], "row_count": len(b["rows"]), "sha256": fingerprint(b["rows"]), "columns": cols, "date_samples": dates})
-    return {"contracts": bundle["contracts"], "batch_manifest": batches}
+    return {"target_date_format": ISO, "contracts": bundle["contracts"], "batch_manifest": batches}
 
 def propose(bundle, audit_path=None, timeout=90, budget_usd=0.50):
     binary = shutil.which("claude")
