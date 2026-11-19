@@ -43,7 +43,7 @@ def run_pilot(base, output):
         bundle = inject(base, kind, variant)
         for name, plan, checked in [("unrepaired", NOOP, False), ("fixed_rules", fixed_plan(bundle), False), ("fixed_rules_with_verifier", fixed_plan(bundle), True)]:
             run = attempt(bundle, plan, checker=checked)
-            rows.append({"scenario": case_id, "family": kind, "method": name, "decision": run["verdict"]["decision"], "seconds": run["seconds"], **score(run, gold, kind == "ambiguous")})
+            rows.append({"scenario": case_id, "family": kind, "method": name, "decision": run["verdict"]["decision"], "failures": run["verdict"]["failures"], "seconds": run["seconds"], **score(run, gold, kind == "ambiguous")})
         print(f"Pilot: {case_id}", flush=True)
     summaries = {}
     for name in ["unrepaired", "fixed_rules", "fixed_rules_with_verifier"]:
@@ -112,7 +112,8 @@ def run_heldout(base, output):
                                     ("fixed_rules_with_verifier", fixed_plan(bundle), True)]:
             run = attempt(bundle, plan, checker=checked)
             rows.append({"scenario": case_id, "family": kind, "method": name,
-                         "decision": run["verdict"]["decision"], "seconds": run["seconds"],
+                         "decision": run["verdict"]["decision"], "failures": run["verdict"]["failures"],
+                         "seconds": run["seconds"],
                          **score(run, gold, review)})
         print(f"Held-out: {case_id}", flush=True)
     result = {"benchmark_status": "held-out evaluation; fault families disjoint from the development pilot",
