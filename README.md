@@ -28,7 +28,7 @@ Team: **Siddhi Sandip Kakani**, **Bernice Mercy Sharon Malaiarasu**.
 - Static **monitoring dashboard** (`artifacts/dashboard.html`): scorecard,
   human-review queue, outcomes by fault family, live-agent cost/latency,
   verifier controls, and a filterable decision log.
-- 32/32 unit tests pass.
+- 33/33 unit tests pass.
 
 See `PipelineMedic_Progress_Report.pdf` for measured results.
 
@@ -87,7 +87,7 @@ Set `PIPELINEMEDIC_PYTHON` to pick the interpreter.
 # 7. Build the monitoring dashboard from whatever artifacts exist
 ./run_local.sh dashboard          # writes artifacts/dashboard.html
 
-# 8. Run the test suite (32 tests)
+# 8. Run the test suite (33 tests)
 PYTHONPATH="$PWD/.deps:$PWD" "$PIPELINEMEDIC_PYTHON" -m unittest discover -s tests
 
 # 9. Regenerate the progress-report PDF from saved artifacts
@@ -121,7 +121,7 @@ ingestion ledger). Fault choices: `rename`, `date`, `replay`, `combined`,
 | `pipelinemedic/evaluate.py` | Pilot + held‑out runners, gold scoring (isolated from runtime), checker challenges, live pilot, and the 1‑vs‑N candidate experiment. |
 | `pipelinemedic/dashboard.py` | Builds a self-contained HTML monitoring dashboard from `artifacts/*.json` (read-only; never an input to the agent or verifier). |
 | `pipelinemedic/__main__.py` | CLI: `prepare`, `baseline`, `evaluate`, `heldout`, `checker-tests`, `live-pilot`, `candidate-experiment`, `demo`, `dashboard`. |
-| `tests/test_pipeline.py` | 22 core unit tests. |
+| `tests/test_pipeline.py` | 23 core unit tests. |
 | `tests/test_extensions.py` | 8 tests for held‑out faults and the candidate experiment. |
 | `tests/test_dashboard.py` | 2 tests for dashboard rendering and script escaping. |
 | `make_report.py` | Renders the 4‑page progress PDF from `artifacts/*.json`. |
@@ -136,14 +136,16 @@ by the runtime agent or verifier).
 ## Limitations
 
 - The live Claude comparison is **4 smoke cases** and reuses one proposal for
-  the paired run — preliminary, not a performance claim. On this set the
-  fixed‑rule baseline currently outperforms the agent (it failed the `date`
-  case by omitting ISO canonicalization; the verifier correctly rejected it).
+  the paired run — preliminary, not a performance claim. The agent originally
+  failed the `date` case: it read the contract's source format as the target
+  and returned an empty plan (the verifier rejected it). The system prompt and
+  evidence now state the ISO target explicitly; after that fix the agent
+  passes 4/4 smoke cases, matching — not beating — the fixed‑rule baseline.
 - The **1‑vs‑N candidate experiment** is preliminary. On the `date` fault all N
-  samples failed identically, so best‑of‑N did **not** help — the failure is
-  systematic (missing ISO canonicalization), not sampling noise; the fix is a
-  clearer agent system prompt, not more samples. The verifier accepted zero
-  wrong candidates.
+  samples failed identically, so best‑of‑N did **not** help — the failure was
+  systematic, not sampling noise. After the prompt fix, 3/3 `date` and 3/3
+  `rename` candidates are accepted and correct (N=3). The verifier accepted
+  zero wrong candidates in either run.
 - The held‑out set reuses fresh gold computed from the clean base; a future
   round should draw gold from an entirely separate data split.
 - The dashboard is a static snapshot; rerun `./run_local.sh dashboard` after
