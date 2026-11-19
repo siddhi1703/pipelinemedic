@@ -16,6 +16,7 @@ def main():
     sub.add_parser("evaluate")
     sub.add_parser("heldout")
     sub.add_parser("checker-tests")
+    sub.add_parser("dashboard")
     live = sub.add_parser("live-pilot"); live.add_argument("--max-cases", type=int, default=4)
     cand = sub.add_parser("candidate-experiment")
     cand.add_argument("--families", nargs="+", default=["date", "rename"],
@@ -26,6 +27,9 @@ def main():
     data, out = Path("data/olist_5000"), Path("artifacts")
     if args.cmd == "prepare":
         print(json.dumps(prepare(args.source, data, args.size), indent=2)); return
+    if args.cmd == "dashboard":
+        from .dashboard import build
+        print(f"Wrote {build(out)}"); return
     base = load_sample(data)
     if args.cmd == "baseline":
         run = attempt(base, NOOP, db_path=out / "baseline.duckdb")
