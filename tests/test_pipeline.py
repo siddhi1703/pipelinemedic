@@ -123,6 +123,12 @@ class PipelineTests(unittest.TestCase):
         self.assertNotIn('"rows"',evidence)
         self.assertNotIn("reference_metrics",evidence)
 
+    def test_agent_is_told_the_iso_target(self):
+        from pipelinemedic.agent import SYSTEM
+        from pipelinemedic.data import ISO
+        self.assertEqual(observe(self.base)["target_date_format"],ISO)
+        self.assertIn("target_date_format",SYSTEM)
+
     @patch("pipelinemedic.agent.shutil.which",return_value="/mock/claude")
     @patch("pipelinemedic.agent.subprocess.run")
     def test_cli_json_and_cost_are_parsed(self,run,which):
