@@ -25,7 +25,10 @@ Team: **Siddhi Sandip Kakani**, **Bernice Mercy Sharon Malaiarasu**.
   (unseen columns, formats, tables, and compositions) — tests generalization.
 - **1‑vs‑N candidate experiment**: the agent draws N proposals and the verifier
   selects among them (it never sees gold).
-- 30/30 unit tests pass.
+- Static **monitoring dashboard** (`artifacts/dashboard.html`): scorecard,
+  human-review queue, outcomes by fault family, live-agent cost/latency,
+  verifier controls, and a filterable decision log.
+- 32/32 unit tests pass.
 
 See `PipelineMedic_Progress_Report.pdf` for measured results.
 
@@ -81,10 +84,13 @@ Set `PIPELINEMEDIC_PYTHON` to pick the interpreter.
 # 6. 1-vs-N candidate experiment (needs the claude CLI; N real calls per family)
 ./run_local.sh candidate-experiment --families date rename --n 3
 
-# 7. Run the test suite (30 tests)
+# 7. Build the monitoring dashboard from whatever artifacts exist
+./run_local.sh dashboard          # writes artifacts/dashboard.html
+
+# 8. Run the test suite (32 tests)
 PYTHONPATH="$PWD/.deps:$PWD" "$PIPELINEMEDIC_PYTHON" -m unittest discover -s tests
 
-# 8. Regenerate the progress-report PDF from saved artifacts
+# 9. Regenerate the progress-report PDF from saved artifacts
 "$PIPELINEMEDIC_PYTHON" make_report.py     # needs reportlab
 ```
 
@@ -113,9 +119,11 @@ ingestion ledger). Fault choices: `rename`, `date`, `replay`, `combined`,
 | `pipelinemedic/scenarios.py` | Controlled fault injection for the development pilot (**not** held‑out). |
 | `pipelinemedic/heldout.py` | Held‑out fault families, disjoint from the pilot, for a generalization test. |
 | `pipelinemedic/evaluate.py` | Pilot + held‑out runners, gold scoring (isolated from runtime), checker challenges, live pilot, and the 1‑vs‑N candidate experiment. |
-| `pipelinemedic/__main__.py` | CLI: `prepare`, `baseline`, `evaluate`, `heldout`, `checker-tests`, `live-pilot`, `candidate-experiment`, `demo`. |
+| `pipelinemedic/dashboard.py` | Builds a self-contained HTML monitoring dashboard from `artifacts/*.json` (read-only; never an input to the agent or verifier). |
+| `pipelinemedic/__main__.py` | CLI: `prepare`, `baseline`, `evaluate`, `heldout`, `checker-tests`, `live-pilot`, `candidate-experiment`, `demo`, `dashboard`. |
 | `tests/test_pipeline.py` | 22 core unit tests. |
 | `tests/test_extensions.py` | 8 tests for held‑out faults and the candidate experiment. |
+| `tests/test_dashboard.py` | 2 tests for dashboard rendering and script escaping. |
 | `make_report.py` | Renders the 4‑page progress PDF from `artifacts/*.json`. |
 
 ### Outputs (`artifacts/`)
@@ -138,7 +146,8 @@ by the runtime agent or verifier).
   wrong candidates.
 - The held‑out set reuses fresh gold computed from the clean base; a future
   round should draw gold from an entirely separate data split.
-- No monitoring **dashboard** yet.
+- The dashboard is a static snapshot; rerun `./run_local.sh dashboard` after
+  new evaluations to refresh it.
 - The bundled `.deps/` DuckDB is macOS / CPython‑3.12 specific; other platforms
   should `pip install duckdb==1.5.6`.
 - Ambiguous dates with no documented source format are escalated to human
